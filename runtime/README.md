@@ -78,12 +78,75 @@ gcruntime.on('gc','onLevelUpload:before', (data)=>{
 })
 ```
 > Note: only `gc` module events support data modification. Also, you can't name your module `gc`
- 
+
+### What's GhostCore :before and :after and when to use them?
+- Use `event:before` for preprocessors: when you need to modify data before it's processed and stored/returned by GhostCore
+- Use `event:after` for notifications, webhooks, etc. (Things that doesn't affect default data flow)
+
+
+## GC Events
+
+### Essential
+
+```js
+gcruntime.emit("onLoad", {}) // called during initialization phaze
+
+gcruntime.emit("onUnload", {}) // called during HTTP request end
+```
+JS VMs are asynchronous so their initialization won't affect GhostCore performance, but be aware that requests
+are usually executed in 500ms or less so if you are using something heavy like `discord.js` you might want to
+write events to a list and execute .foreach in `onready`
+
+`onUnload` event doesn't mean that VM will be killed, but indicates that HTTP request is completed, and you won't
+be able to modify any data
+
+### Player
+
+```js
+gcruntime.emit("onPlayerRegistered", {
+    uid: 1, 
+    uname: "PlayerUsername",
+    email: "player@example.com"
+}) //return value: IGNORED
+
+gcruntime.emit("onPlayerLogin", {
+    uid: 1,
+    uname: "PlayerUsername"
+}) //return value: bool <- should we allow player to login
+
+gcruntime.emit("onPlayerBackup:before", {
+    uid: 1,
+    uname: "PlayerUsername",
+    savedata: "...decryptedSavedata"
+}) //return value: string <- new savedata which will be stored
+
+gcruntime.emit("onPlayerBackup:after", {
+   uid: 1,
+   uname: "PlayerUsername",
+   savedata: "...decryptedSavedata"
+}) //return value: IGNORED
+
+//onPlayerSync is forbidden as it's considered inappropriate to modify existing data
+
+gcruntime.emit("onPlayerScoreUpdate:before", {
+    uid: 1,
+    uname: "PlayerUsername",
+    stats: {
+        stars: 100,
+        diamonds: 1000,
+        coins: 10,
+        ucoins: 5,
+        demons: 3,
+        cpoints: 0,
+        orbs: 10000,
+        moons: 0
+    }
+}) //return value: stats object
+```
 
 
 ---
 ## Obsolete
-
 
 ### LevelPacks
 
@@ -93,60 +156,6 @@ gcruntime.on('gc','onLevelUpload:before', (data)=>{
 ### Communication
 
 - To Be Done
-
-### Essential
-
-```go
-package modules
-
-// Plugin describes Plugin type; PluginCore is also Plugin
-type Plugin interface {
-	PreInit(*PluginCore, ...interface{})
-	Unload(...interface{})
-}
-
-// PreInit Invoked to load anything
-func PreInit(pch *PluginCore, args ...interface{})
-
-// Unload Unloads everything
-func Unload(args ...interface{})
-```
-
-### Player
-
-```go
-package modules
-
-// OnPlayerNew Invoked when player is registered, but not yet activated account
-func OnPlayerNew(uid int, uname string, email string)
-
-// OnPlayerActivate Invoked when player first activated account
-func OnPlayerActivate(uid int, uname string)
-
-// OnPlayerLogin invoked when player commits login (regular, not gjp)
-func OnPlayerLogin(uid int, uname string)
-
-// OnPlayerBackup invoked when player uploads their backup
-func OnPlayerBackup(uid int, decryptedBackup string)
-
-//onPlayerSync is forbidden
-
-// OnPlayerScoreUpdate invoked when player updates their score
-func OnPlayerScoreUpdate(uid int, uname string, stats map[string]int)
-
-var stats = map[string]int{
-	"stars": 0,
-	"diamonds": 0,
-	"coins": 0,
-	"ucoins": 0,
-	"demons": 0,
-	"cpoints": 0,
-	"orbs": 0,
-	"moons": 0,
-	"special": 0,
-	"lvlsCompleted": 0,
-}
-```
 
 ### Level
 
