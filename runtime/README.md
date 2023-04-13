@@ -1,4 +1,89 @@
-# PLUGINS
+# GCModules Runtime
+
+Communication between JS runtimes and core itself is done through `GCRuntime` which introduces following functions to VM:
+> `gcruntime.on` event listener is not really a javascript Event/CustomEvent, but rather a hook that will register
+callback inside GhostCore and will be triggered as soon as matching event is fired
+> 
+> `callback` can return modified data (useful for preprocessors) or nothing
+```ts
+gcruntime.on = (
+    module: string, //relay event only for specified module
+    event: string,  //relay event only for specified type
+    callback: (data: object) => (object | void)
+): void => {/*@__PURE__*/}
+
+
+//Example that recieves event:
+gcruntime.on("pong", "ping", (e) => console.log(e))
+//Example that modifies event:
+gcruntime.on("pong", "ping", (e) => ({...e, value: 17}))
+```
+
+> `gcruntime.emit` sends event to all runtimes and core itself
+> 
+> `emit` cannot return any values or have callbacks
+```ts
+gcruntime.emit = (
+    event: string,
+    data: object
+): void => {/*@__PURE__*/}
+
+
+// Example that sends event (module "pong"):
+gcruntime.emit("ping", {ping: "pong", value: 10})
+```
+
+### Why only one-way events?
+
+Imagine a situation when there is one `ping` emitter and 10 receivers, 8 of which modifies data. Which value to return?
+
+A much better way of implementing two-way communication is through emitters and listeners on both sides:
+```js
+//pong.js
+gcruntime.emit("ping", "Hi!") //pong module
+
+gcruntime.on("*", "pong", (e)=>console.log("It responded!"))
+```
+```js
+//responder.js
+gcruntime.on("pong", "ping", (e)=>{
+    gcruntime.emit("pong", e+" - and I say 'Hello!'")
+})
+```
+Let's see what just happened:
+1) `pong` module sent `ping` event with `Hi!` as it's body
+2) `responder` module got this event because
+   - it listens only for `pong` module events only
+   - it listens only for `ping` events
+3) and `responder` sends `pong` event with `Hi! - and I say 'Hello!'` as it's body
+4) `pong` module got this event because
+    - it uses `*` wildcard and doesn't care who sent event
+    - it listens only for `pong` event
+5) `pong` module logs this historical event to console
+
+### Omg but I can just listen on all-wildcards and capture all events
+Yes. I mean these are your scripts, you should know what they are doing. Also you can use `gcruntime.on('*','*',()=>{})`
+for debugging purposes
+
+### Wait, but why callbacks can return modified data then?
+Well, while runtimes are isolated and opaque for GhostCore, the core itself may emit some `:before` events, which data 
+is expected to be modified, like `levelName`.
+
+Let's make a filter for bad words as an example
+```js
+gcruntime.on('gc','onLevelUpload:before', (data)=>{
+    let name = data.name
+    name = name.replace(/(.+)(bad)(.+)/, "$1***$3")
+    return {...data, name: name}
+})
+```
+> Note: only `gc` module events support data modification. Also, you can't name your module `gc`
+ 
+
+
+---
+## Obsolete
+
 
 ### LevelPacks
 

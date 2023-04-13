@@ -1,4 +1,4 @@
-// Provided context this
+// Everything below will be overwritten by the real runtime, so don't mind examples
 
 const gcruntime = {}
 
