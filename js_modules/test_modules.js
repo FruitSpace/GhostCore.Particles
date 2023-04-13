@@ -1,4 +1,4 @@
-import kafif from 'https://pastebin.com/raw/uPEN3sR2'
+import kafif from './test_modules_lib'
 
 function fNumber(value) {
     return parseInt(value)

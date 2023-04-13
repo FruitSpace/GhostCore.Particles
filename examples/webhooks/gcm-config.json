@@ -1,0 +1,7 @@
+{
+  "script": "webhooks",
+  "version": "1.0",
+  "author": "unknown",
+  "entrypoint": "webhooks.js",
+  "npm": false
+}

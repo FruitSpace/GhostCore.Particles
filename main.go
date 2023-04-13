@@ -1,16 +1,17 @@
 package main
 
 import (
-	"github.com/FruitSpace/GhostCore.Modules/goja_engine"
-	"github.com/dop251/goja"
+	"github.com/FruitSpace/GhostCore.Modules/bundler"
+	"github.com/FruitSpace/GhostCore.Modules/engine"
+	esbuild "github.com/evanw/esbuild/pkg/api"
 	"log"
-	"reflect"
+	"os"
 )
 
 var scripts = []string{
 	"test_function.js",
 	"test_anonymous.js",
-	"test_modules.js",
+	"test_modules_compiled.js",
 	//"test_math.js",
 }
 
@@ -24,23 +25,26 @@ var testF = map[string]interface{}{
 }
 
 func main() {
-	for _, script := range scripts {
-		log.Println("Testing", script)
-		engine := goja_engine.NewEngine()
-		err := engine.LoadFile("./js_modules/" + script)
-		if err != nil {
-			log.Panicln(err)
-		}
-		for k, v := range testF {
-			ret, err := engine.Call(k, v)
-			if err != nil {
-				log.Panicln(err)
-			}
-			log.Printf("%s(%v) -> %+v", k, v, ret)
-			if reflect.TypeOf(ret) == reflect.TypeOf((func(goja.FunctionCall) goja.Value)(nil)) {
-				log.Printf("╰ Reflect detected function. Output: %+v",
-					ret.(func(goja.FunctionCall) goja.Value)(goja.FunctionCall{}).Export())
-			}
-		}
+	fname := os.Args[1]
+	data, err := bundler.AutoFolder(fname)
+	if err != nil {
+		log.Panicln(err)
+	}
+	log.Printf("Bundling '%s' (ver.%s) by %s", data.Script, data.Version, data.Author)
+	nb := bundler.NewBundler().WithEntryPoint(data.Entrypoint).UseMinify(true).
+		WithOutfile("script.js", false).WithLogLevel(esbuild.LogLevelInfo)
+	code, err := nb.Bundle()
+	if err != nil {
+		log.Println(err)
+		log.Println(nb.GetErrors())
+		return
+	}
+	log.Println("Running in VM...")
+	e := engine.NewEngine()
+	err = e.LoadString(string(code.Contents))
+	if err != nil {
+		log.Panicln(err)
+	}
+	for {
 	}
 }
