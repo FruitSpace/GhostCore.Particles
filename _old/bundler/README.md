@@ -49,7 +49,7 @@ pipelines).
 
 Also, it will add target
 ```json
-"build": "gcmbundle bundle"
+  "build": "gcmbundle bundle"
 ```
 
 Default output is at `dist/gcmodule.js`

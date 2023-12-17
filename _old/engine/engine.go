@@ -19,14 +19,23 @@ type Engine struct {
 	loop *eventloop.EventLoop
 }
 
-func NewEngine() *Engine {
+func NewEngine(debug bool) *Engine {
 	loop := eventloop.NewEventLoop()
 	loop.Start()
 	vm := goja.New()
-	new(require.Registry).Enable(vm)
-	console.Enable(vm)
+	if debug {
+		new(require.Registry).Enable(vm)
+		console.Enable(vm)
+	} else {
+		logFunc := func(goja.FunctionCall) goja.Value { return nil }
+		vm.Set("console", map[string]func(goja.FunctionCall) goja.Value{
+			"log":   logFunc,
+			"error": logFunc,
+			"warn":  logFunc,
+		})
+	}
 	fetch.Enable(loop, goproxy.NewProxyHttpServer())
-	babel.Init(4)
+	//babel.Init(4)
 	//registry := new(require.Registry)
 	//_ = registry.Enable(vm)
 	return &Engine{
@@ -90,4 +99,10 @@ func (e *Engine) TranspileBabel(code string) (string, error) {
 			"env",
 		},
 	})
+}
+
+func (e *Engine) Shutdown() {
+	e.vm.Interrupt("halt")
+	e.vm = nil
+	e.loop = nil
 }
